@@ -2,7 +2,7 @@ import os
 from tkinter import *
 from tkinter import filedialog, messagebox
 import shutil
-
+import json
 
 def home_page():
     # get unique number from entry widget
@@ -50,20 +50,37 @@ def new_node_page(folder_name):
         text_content = text_entry.get("1.0", END)
         # create a new folder with the unique number as the name
         os.mkdir(folder_name)
+        # Adding genesis block
+        genesis_file_path = './genesis.tiff'
+        if os.path.exists(genesis_file_path):
+            shutil.copy(genesis_file_path, folder_name)
+            # parent_file_name = os.path.basename(parent_file_path)
+        else:
+            print("tiff file not found")
         # create a new text file with the same name as the folder and write the text content to it
         with open(folder_name + '/' + folder_name + '.txt', 'w') as f:
             f.write(text_content)
         # allow the user to select a photo file and move it to the new folder with the same name as the folder
         file_path = filedialog.askopenfilename(title="Select a photo", filetypes=[
-                                               ("Image files", "*.jpg *.jpeg *.png")])
+                                               ("Image files", "*.jpg *.jpeg *.png *.tiff")])
+        # if file_path:
+        #     file_extension = os.path.splitext(file_path)[1]
+        #     photo_name = folder_name + file_extension
+        #     os.rename(file_path, folder_name + '/' + photo_name)
         if file_path:
             file_extension = os.path.splitext(file_path)[1]
-            photo_name = folder_name + file_extension
-            os.rename(file_path, folder_name + '/' + photo_name)
+            new_file_path = os.path.join(
+                folder_name, folder_name+file_extension)
+            shutil.copy(file_path, new_file_path)
+        
+        # create a new JSON file with the same name as the folder and add the text and photo file names to it
+        data = {'tail': '1'}
+        with open(folder_name + '/' + folder_name + '.json', 'w') as f:
+            json.dump(data, f)
         # show a message box with a success message
         messagebox.showinfo(
-            "Success", "Folder and text file added successfully.")
-        # destroy the new node page window and show the home page window
+            "Success", "Folder, text file, and JSON file added successfully.")
+            # destroy the new node page window and show the home page window
         top.destroy()
         root.deiconify()
 
@@ -119,7 +136,7 @@ def update_delete_page(folder_name):
     def display_files(folder_name):
         files = os.listdir(folder_name)
         text_files = [f for f in files if f.endswith('.txt')]
-        photo_files = [f for f in files if f.endswith(('.jpg', 'jpeg', 'png'))]
+        photo_files = [f for f in files if f.endswith(('.jpg', 'jpeg', 'png','.tiff'))]
         files_listbox = Listbox(top)
         files_listbox.pack()
 
@@ -146,31 +163,106 @@ def update_node(folder_name, top):
 
     # actual fn that changes the files
     def update_folder_and_file():
+        pointing_address=0
         text_content = text_entry.get("1.0", END)
         files = os.listdir(folder_name)
         text_files = [os.path.join(folder_name, f)
                       for f in files if f.endswith('.txt')]
-        for text_file in text_files:
-            os.remove(text_file)
-            
+        newest_text = max(text_files, key=os.path.getctime)
+        # print(os.path.basename(newest_text))
+        # print(folder_name+'.txt')
+        # oldest_file=folder_name+ \ folder_name+'.txt'
+        if os.path.basename(newest_text) == folder_name+'.txt':
+            # print("Triggered")
+            current_append_num = 0
+            new_file_name = folder_name + '_' + \
+                "{:03d}".format(current_append_num + 1) + '.txt'
+            with open(os.path.join(folder_name, new_file_name), 'w') as f:
+                f.write(text_content)
+        else:
+            current_append_num = int(
+                os.path.splitext(os.path.basename(newest_text))[0].split('_')[-1])
+            new_file_name = folder_name + '_' + \
+                "{:03d}".format(current_append_num + 1) + '.txt'
+            with open(os.path.join(folder_name, new_file_name), 'w') as f:
+                f.write(text_content)
         photo_files = [os.path.join(folder_name, f)
-                      for f in files if f.endswith(('.jpg','jpeg','png'))]
-        for photo_file in photo_files:
-            os.remove(photo_file)
+                       for f in files if f.endswith(('.jpg', '.jpeg', '.png','.tiff'))]
+        newest_photo = max(photo_files, key=os.path.getctime)
+        print(newest_photo)
+        if os.path.basename(newest_photo) == folder_name+'.jpg':
+            print("trigger1")
+            current_photo_num = 0
+            new_photo_name = folder_name + '_' + \
+                "{:03d}".format(current_photo_num + 1) + \
+                os.path.splitext(newest_photo)[1]
+            print(new_photo_name)
+            file_path = filedialog.askopenfilename(title="Select a photo", filetypes=[
+                ("Image files", "*.jpg *.jpeg *.png *.tiff")])
+            if file_path:
+               file_extension = os.path.splitext(file_path)[1]
+               new_file_path = os.path.join(
+                   folder_name, new_photo_name+file_extension)
+               shutil.copy(file_path, new_file_path)
+        else:
+            current_photo_num = int(
+                os.path.splitext(os.path.basename(newest_text))[0].split('_')[-1])
+            print(current_append_num)
+            new_photo_name = folder_name + '_' + \
+                "{:03d}".format(current_photo_num + 1) + \
+                os.path.splitext(newest_photo)[1]
+            print(new_photo_name)
+            file_path = filedialog.askopenfilename(title="Select a photo", filetypes=[
+                ("Image files", "*.jpg *.jpeg *.png *.tiff",)])
+            if file_path:
+                file_extension = os.path.splitext(file_path)[1]
+                new_file_path = os.path.join(
+                    folder_name, new_photo_name+file_extension)
+                shutil.copy(file_path, new_file_path)
 
         
-        with open(os.path.join(folder_name, folder_name + '.txt'), 'w') as f:
-            f.write(text_content)
+        json_files = [os.path.join(folder_name, f)
+                        for f in files if f.endswith('.json')]
+
+        for json_file in json_files:
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+                pointing_address=data['tail']
+            os.remove(json_file)
+        
+        new_pointing_address=str(int(pointing_address)+1)
+        data = {'tail': new_pointing_address}
+        with open(folder_name + '/' + folder_name + '.json', 'w') as f:
+            json.dump(data, f)
+        
+        
+        
+        
+        # text_content = text_entry.get("1.0", END)
+        # files = os.listdir(folder_name)
+        # text_files = [os.path.join(folder_name, f)
+        #               for f in files if f.endswith('.txt')]
+        # for text_file in text_files:
+        #     os.remove(text_file)
             
-        file_path = filedialog.askopenfilename(title="Select a photo", filetypes=[
-            ("Image files", "*.jpg *.jpeg *.png")])
+        # photo_files = [os.path.join(folder_name, f)
+        #               for f in files if f.endswith(('.jpg','jpeg','png'))]
+        # for photo_file in photo_files:
+        #     os.remove(photo_file)
+
         
-        if file_path:
-            file_extension = os.path.splitext(file_path)[1]
-            photo_name = folder_name + file_extension
-            os.rename(file_path, folder_name + '/' + photo_name)
+        # with open(os.path.join(folder_name, folder_name + '.txt'), 'w') as f:
+        #     f.write(text_content)
+            
+        # file_path = filedialog.askopenfilename(title="Select a photo", filetypes=[
+        #     ("Image files", "*.jpg *.jpeg *.png")])
         
-        messagebox.showinfo("Success", "Text file updated successfully.")
+        # if file_path:
+        #     file_extension = os.path.splitext(file_path)[1]
+        #     photo_name = folder_name + file_extension
+        #     os.rename(file_path, folder_name + '/' + photo_name)
+        
+        messagebox.showinfo("Success", "Patient file updated successfully.")
         update_top.destroy()
         top.destroy()
         home_page()
